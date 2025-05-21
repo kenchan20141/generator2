@@ -1,0 +1,790 @@
+
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSE中文 AI擬題</title>
+    <style>
+        body {
+            font-family: 'Noto Serif TC', 'cwTeXHei', 'cwTeXFangSong', 'cwTeXKai', 'cwTeXMing', 'PingFang TC', 'Microsoft JhengHei', serif;
+            background-image: url('https://i.ibb.co/rGjHnWSk/image.png');
+            background-repeat: repeat;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+ .copyright-footer {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            padding: 5px 10px;
+            background-color: #f1f1f1;
+        }
+
+        .copyright-footer p {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .copyright-footer p {
+                font-size: 12px;
+            }
+        }
+
+
+            
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            opacity: 0.9;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        #generatorSelector {
+            margin-bottom: 20px;
+        }
+        label {
+            font-size: 18px;
+            color: #333;
+            display: block;
+            margin-bottom: 5px;
+        }
+        select {
+            padding: 5px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        input[type="number"] {
+            width: 60px;
+            padding: 5px;
+            margin-left: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: block;
+            margin: 0 auto;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #loading {
+            font-size: 18px;
+            color: #333;
+            margin-top: 15px;
+            display: none;
+            text-align: center;
+        }
+        #output {
+            margin-top: 15px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .outputSection {
+            margin-bottom: 5px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            word-wrap: break-word;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .outputSection h3 {
+            margin: 0 0 2px 0;
+            font-size: 18px;
+            color: #333;
+        }
+        .outputSection p {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+        }
+        .inputSection {
+            margin-bottom: 20px;
+        }
+        .inputGroup {
+            margin-bottom: 15px;
+        }
+        .referenceQA {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .sequence {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .controlButtons {
+            text-align: center;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .addReferenceBtn, .removeReferenceBtn, .clearReferenceBtn {
+            display: inline-block;
+            background-color: #5d6d7e;
+            color: white;
+            width: 30px;
+            height: 30px;
+            font-size: 20px;
+            line-height: 30px;
+            text-align: center;
+            padding: 0;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin: 0 5px;
+        }
+        .addReferenceBtn:hover, .removeReferenceBtn:hover {
+            background-color: #4a5a6b;
+        }
+        .clearReferenceBtn {
+            background-color: #dc3545;
+        }
+        .clearReferenceBtn:hover {
+            background-color: #c82333;
+        }
+        .outputGroup {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .outputGroup .sequence {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 24px;
+            }
+            label {
+                font-size: 16px;
+            }
+            button {
+                font-size: 14px;
+                padding: 8px 16px;
+            }
+            #output {
+                max-height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DSE中文 AI擬題</h1>
+        <div id="generatorSelector" class="inputGroup">
+            <label for="generatorType">選擇擬題範疇：</label>
+            <select id="generatorType">
+                <option value="reading">閱讀</option>
+                <option value="essay">長文</option>
+                <option value="practical">實用文</option>
+            </select>
+        </div>
+        <div id="essayInputs" class="inputSection" style="display: none;">
+            <div class="inputGroup">
+                <label for="mimicQuestion">請輸入參考題目：</label>
+                <textarea id="mimicQuestion" placeholder="在此輸入或貼上參考題目內容"></textarea>
+            </div>
+            <div class="inputGroup">
+                <label for="quantity">生成題目數量：</label>
+                <input type="number" id="quantity" min="1" value="3">
+            </div>
+        </div>
+        <div id="practicalInputs" class="inputSection" style="display: none;">
+            <div class="inputGroup">
+                <label for="topicSelect">選擇主題：</label>
+                <select id="topicSelect">
+                    <option value="random">隨機</option>
+                    <option value="custom">自訂</option>
+                    <option value="運動">運動</option>
+                    <option value="生涯規劃">生涯規劃</option>
+                    <option value="責任">責任</option>
+                    <option value="教育">教育</option>
+                    <option value="文化">文化</option>
+                    <option value="社會">社會</option>
+                    <option value="歷史">歷史</option>
+                    <option value="地理">地理</option>
+                    <option value="藝術">藝術</option>
+                    <option value="體育">體育</option>
+                    <option value="法律">法律</option>
+                    <option value="健康">健康</option>
+                    <option value="心理">心理</option>
+                    <option value="家庭">家庭</option>
+                    <option value="友誼">友誼</option>
+                    <option value="愛情">愛情</option>
+                    <option value="就業">就業</option>
+                    <option value="經濟">經濟</option>
+                    <option value="生態">生態</option>
+                    <option value="能源">能源</option>
+                    <option value="資源">資源</option>
+                    <option value="安全">安全</option>
+                    <option value="網路">網路</option>
+                    <option value="媒體">媒體</option>
+                    <option value="資訊">資訊</option>
+                    <option value="道德">道德</option>
+                    <option value="誠信">誠信</option>
+                    <option value="公平">公平</option>
+                    <option value="自由">自由</option>
+                    <option value="權利">權利</option>
+                    <option value="義務">義務</option>
+                    <option value="隱私">隱私</option>
+                    <option value="禮儀">禮儀</option>
+                    <option value="榜樣">榜樣</option>
+                    <option value="創新">創新</option>
+                    <option value="創業">創業</option>
+                    <option value="消費">消費</option>
+                    <option value="儲蓄">儲蓄</option>
+                    <option value="民族">民族</option>
+                    <option value="語言">語言</option>
+                    <option value="宗教">宗教</option>
+                    <option value="傳統">傳統</option>
+                    <option value="現代">現代</option>
+                    <option value="城鄉">城鄉</option>
+                    <option value="社區">社區</option>
+                    <option value="公益">公益</option>
+                    <option value="慈善">慈善</option>
+                    <option value="災害">災害</option>
+                    <option value="醫療">醫療</option>
+                    <option value="疾病">疾病</option>
+                    <option value="飲食">飲食</option>
+                    <option value="旅遊">旅遊</option>
+                    <option value="建築">建築</option>
+                    <option value="娛樂">娛樂</option>
+                    <option value="音樂">音樂</option>
+                    <option value="電影">電影</option>
+                    <option value="文學">文學</option>
+                    <option value="人口">人口</option>
+                    <option value="性別">性別</option>
+                    <option value="年齡">年齡</option>
+                    <option value="職業">職業</option>
+                    <option value="學業">學業</option>
+                    <option value="考試">考試</option>
+                    <option value="升學">升學</option>
+                    <option value="校園">校園</option>
+                    <option value="師生">師生</option>
+                    <option value="同學">同學</option>
+                    <option value="課外">課外</option>
+                    <option value="社團">社團</option>
+                    <option value="競賽">競賽</option>
+                    <option value="志願">志願</option>
+                    <option value="壓力">壓力</option>
+                    <option value="自律">自律</option>
+                    <option value="時間">時間</option>
+                    <option value="興趣">興趣</option>
+                    <option value="習慣">習慣</option>
+                    <option value="遊戲">遊戲</option>
+                    <option value="睡眠">睡眠</option>
+                    <option value="氣候">氣候</option>
+                    <option value="汙染">汙染</option>
+                    <option value="閱讀">閱讀</option>
+                </select>
+            </div>
+            <div id="customTopicGroup" class="inputGroup" style="display: none;">
+                <label for="customTopic">請輸入自訂主題：</label>
+                <input type="text" id="customTopic" placeholder="請輸入自訂主題">
+            </div>
+            <div class="inputGroup">
+                <label for="refQuestion">參考題目：</label>
+                <textarea id="refQuestion" placeholder="在此輸入參考題目"></textarea>
+            </div>
+            <div class="inputGroup">
+                <label for="refMaterial1">參考資料一：</label>
+                <textarea id="refMaterial1" placeholder="在此輸入參考資料一"></textarea>
+            </div>
+            <div class="inputGroup">
+                <label for="refMaterial2">參考資料二：</label>
+                <textarea id="refMaterial2" placeholder="在此輸入參考資料二"></textarea>
+            </div>
+        </div>
+        <div id="readingInputs" class="inputSection">
+            <div id="referenceQAContainer" class="inputGroup">
+                <label>參考題目與答案：</label>
+                <div id="referenceQAList">
+                    <div class="referenceQA">
+                        <span class="sequence">1.</span>
+                        <textarea class="refQuestionAnswer" placeholder="在此輸入參考題目與答案"></textarea>
+                    </div>
+                </div>
+                <div class="controlButtons">
+                    <button class="addReferenceBtn" onclick="addReferenceQA()">+</button>
+                    <button class="removeReferenceBtn" onclick="removeReferenceQA()">-</button>
+                    <button class="clearReferenceBtn" onclick="clearReferenceQA()" title="清空">✖</button>
+                </div>
+            </div>
+            <div class="inputGroup">
+                <label for="targetPassage">擬題篇章：</label>
+                <textarea id="targetPassage" placeholder="在此輸入擬題篇章"></textarea>
+            </div>
+        </div>
+        <button id="generateBtn">生成</button>
+        <div id="loading">AI正在思考，請稍候...</div>
+        <div id="output"></div>
+    </div>
+
+    <script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+
+        function filledCell(cell) {
+            return cell !== '' && cell != null;
+        }
+
+        async function loadFileData(filename) {
+            if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+                try {
+                    const workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                    const sheetNames = workbook.SheetNames;
+
+                    const processSheet = async (sheetName) => {
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                        const filteredData = jsonData.filter(row => row.some(filledCell));
+
+                        const headerRowIndex = filteredData.findIndex((row, index) =>
+                            row.filter(filledCell).length >= (filteredData[index + 1]?.filter(filledCell).length || 0)
+                        ) || 0;
+
+                        const csv = XLSX.utils.sheet_to_csv(XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)));
+                        return csv;
+                    };
+
+                    const csvPromises = sheetNames.map(sheetName => processSheet(sheetName));
+                    const csvResults = await Promise.all(csvPromises);
+
+                    return csvResults.length > 0 ? csvResults[0] : "";
+                } catch (e) {
+                    console.error('Error processing file:', e);
+                    return "";
+                }
+            }
+            return gk_fileData[filename] || "";
+        }
+
+        const API_URL = "https://chatapi.akash.network/api/v1/chat/completions";
+        const MODEL = "DeepSeek-R1";
+        const API_KEY = "sk-7Zc--KPcXgJTpuSHXsVDWQ";
+
+        const generatorTypeSelect = document.getElementById('generatorType');
+        const essayInputs = document.getElementById('essayInputs');
+        const practicalInputs = document.getElementById('practicalInputs');
+        const readingInputs = document.getElementById('readingInputs');
+        const generateBtn = document.getElementById('generateBtn');
+        const loadingDiv = document.getElementById('loading');
+        const outputDiv = document.getElementById('output');
+        const topicSelect = document.getElementById('topicSelect');
+        const customTopicGroup = document.getElementById('customTopicGroup');
+        const customTopicInput = document.getElementById('customTopic');
+
+        generatorTypeSelect.addEventListener('change', () => {
+            const type = generatorTypeSelect.value;
+            essayInputs.style.display = type === 'essay' ? 'block' : 'none';
+            practicalInputs.style.display = type === 'practical' ? 'block' : 'none';
+            readingInputs.style.display = type === 'reading' ? 'block' : 'none';
+        });
+
+        topicSelect.addEventListener('change', () => {
+            customTopicGroup.style.display = topicSelect.value === 'custom' ? 'block' : 'none';
+        });
+
+        generateBtn.addEventListener('click', () => {
+            const generatorType = generatorTypeSelect.value;
+            if (generatorType === 'essay') {
+                generateEssayQuestions();
+            } else if (generatorType === 'practical') {
+                generatePracticalQuestions();
+            } else if (generatorType === 'reading') {
+                generateReadingQuestions();
+            }
+        });
+
+        function addReferenceQA() {
+    const list = document.getElementById('referenceQAList');
+    const currentCount = list.querySelectorAll('.referenceQA').length;
+    const newQA = document.createElement('div');
+    newQA.className = 'referenceQA';
+    newQA.innerHTML = `<span class="sequence">${currentCount + 1}.</span><textarea class="refQuestionAnswer" placeholder="在此輸入參考題目與答案"></textarea>`;
+    list.appendChild(newQA);
+    updateControlButtons();
+}
+
+        function removeReferenceQA() {
+            const list = document.getElementById('referenceQAList');
+            const currentCount = list.querySelectorAll('.referenceQA').length;
+            if (currentCount > 1) {
+                list.removeChild(list.lastElementChild);
+                updateControlButtons();
+            }
+        }
+
+        function clearReferenceQA() {
+            const textareas = document.querySelectorAll('.refQuestionAnswer');
+            textareas.forEach(textarea => {
+                textarea.value = '';
+            });
+        }
+
+       function updateControlButtons() {
+    const list = document.getElementById('referenceQAList');
+    const currentCount = list.querySelectorAll('.referenceQA').length;
+    const addBtn = document.querySelector('.addReferenceBtn');
+    const removeBtn = document.querySelector('.removeReferenceBtn');
+    addBtn.disabled = false; // 始終啟用添加按鈕
+    removeBtn.disabled = currentCount <= 1;
+}
+
+        // 初始化按鈕狀態
+        updateControlButtons();
+
+        async function generateEssayQuestions() {
+            const mimicQuestion = document.getElementById('mimicQuestion').value.trim();
+            if (!mimicQuestion) {
+                alert('請輸入參考題目');
+                return;
+            }
+            const quantity = document.getElementById('quantity').value;
+            loadingDiv.style.display = 'block';
+            generateBtn.disabled = true;
+            outputDiv.textContent = '';
+
+            const requestBody = {
+                model: MODEL,
+                messages: [
+                    { role: "system", content: "你是一個作文題目生成器。" },
+                    { role: "user", content: `試根據以上作文題目形式，幫我出題目。必須用繁體中文回應。絕對不要文學性，絕對不要運用文筆及太深奧的詞匯擬題(動詞和名詞的搭配運用不宜搞新意和雕琢，例如「凝結在指縫」的「凝結」和「指縫」、「停駐在窗前」的「停駐」和「窗」，這些都不是常規的配搭，會令題目用語看起來很生澀,請在擬題中斂起你的文筆和才華，題目中不同詞匯的配搭必須平實，不能新鮮)，違反則無效。不要提供太多細節，不要具體描述題目的事件，要足夠空泛才有發揮空間，不要將題目範圍鎖得太小（例如「墜落在深淵的星屑」，太局限了），不要擬訂以描寫為主的題目。擬題時盡量少用以短語構成的定語，必須在形式、句式、用語和字數上參考用家提供的題目（開關引號的內容除外)，違反則無效，但生成題目的內容及題材絕對不可與原本的題目相似（例如參考題目為「沉默」，生成題目則用「留白」或「無聲」等近義詞，這些例子都屬於相似），違反則無效。假如參考題目有逗引，然後再點明題目，便絕對不能只生成題目，假如參考題目沒有逗引，那就必須生成沒有逗引的題目，一切視乎參考題目的形式和字數如何，請模仿參考題目的形式和字數，違反則無效，其生成題目形式及參考題目形式必與參考題目一致。除了生成題目之外，不要顯示任何其他不相關的內容，違反則無效：\n${mimicQuestion}\n請生成${quantity}個新題目。` }
+                ]
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API請求失敗，狀態碼：${response.status}`);
+                }
+
+                const data = await response.json();
+                const generatedQuestions = data.choices[0].message.content;
+                displayEssayQuestions(generatedQuestions);
+            } catch (error) {
+                console.error('錯誤：', error);
+                outputDiv.textContent = '生成題目時出錯，請稍後再試';
+            } finally {
+                loadingDiv.style.display = 'none';
+                generateBtn.disabled = false;
+            }
+        }
+
+        function displayEssayQuestions(questions) {
+            const trimmedQuestions = questions.trim();
+            const formattedQuestions = trimmedQuestions.split('\n').join('\n\n');
+            outputDiv.textContent = formattedQuestions;
+        }
+
+        async function generatePracticalQuestions() {
+            const selectedTopic = topicSelect.value;
+            const refQuestion = document.getElementById('refQuestion').value.trim();
+            const refMaterial1 = document.getElementById('refMaterial1').value.trim();
+            const refMaterial2 = document.getElementById('refMaterial2').value.trim();
+            if (!refQuestion || !refMaterial1 || !refMaterial2) {
+                alert('請輸入所有參考內容');
+                return;
+            }
+            loadingDiv.style.display = 'block';
+            generateBtn.disabled = true;
+            outputDiv.innerHTML = '';
+
+            let topicInstruction;
+            if (selectedTopic === 'custom') {
+                const customTopic = customTopicInput.value.trim();
+                if (!customTopic) {
+                    alert('請輸入自訂主題');
+                    loadingDiv.style.display = 'none';
+                    generateBtn.disabled = false;
+                    return;
+                }
+                topicInstruction = `請以「${customTopic}」為主題。`;
+            } else if (selectedTopic === 'random') {
+                topicInstruction = '請隨機選擇一個主題，且該主題必須與以下列出的所有主題（運動、生涯規劃、責任、教育、文化、社會、歷史、地理、藝術、體育、法律、健康、心理、家庭、友誼、愛情、就業、經濟、生態、能源、資源、安全、網路、媒體、資訊、道德、誠信、公平、自由、權利、義務、隱私、禮儀、榜樣、創新、創業、消費、儲蓄、民族、語言、宗教、傳統、現代、城鄉、社區、公益、慈善、災害、醫療、疾病、飲食、旅遊、建築、娛樂、音樂、電影、文學、人口、性別、年齡、職業、學業、考試、升學、校園、師生、同學、課外、社團、競賽、志願、壓力、自律、時間、興趣、習慣、遊戲、睡眠、氣候、汙染、閱讀）不同，例如可以選擇「科技發展」、「全球化」等其他主題。';
+            } else {
+                topicInstruction = `請以「${selectedTopic}」為主題。`;
+            }
+
+            const requestBody = {
+                model: MODEL,
+                messages: [
+                    { role: "system", content: "你是一個實用文題目生成器。" },
+                    { role: "user", content: `請根據以下參考內容生成相應的實用文題目和資料：
+
+參考題目：
+${refQuestion}
+
+參考資料一：
+${refMaterial1}
+
+參考資料二：
+${refMaterial2}
+
+${topicInstruction}請生成一個新的題目和兩個資料，模仿參考內容的風格和形式，但內容和題材必須不同。生成的題目應與參考題目在形式和字數上相似，但內容和題材必須不同。生成的資料一應與參考資料一在形式和風格上相似，但內容和題材必須不同；生成的資料二應與參考資料二在形式和風格上相似，但內容和題材必須不同。請確保生成的內容不為空白。若無法生成有效內容，則返回「未生成」。
+
+請以以下格式輸出生成的題目和資料：
+題目：[生成的題目]
+資料一：[生成的資料一]
+資料二：[生成的資料二]` }
+                ]
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API請求失敗，狀態碼：${response.status}`);
+                }
+
+                const data = await response.json();
+                const generatedContent = data.choices[0].message.content;
+                const parsed = parsePracticalResponse(generatedContent);
+                if (parsed.question === '未生成' || parsed.material1 === '未生成' || parsed.material2 === '未生成') {
+                    outputDiv.textContent = '生成內容失敗，請重試';
+                } else {
+                    displayPracticalQuestions(parsed);
+                }
+            } catch (error) {
+                console.error('錯誤：', error);
+                outputDiv.textContent = '生成題目時出錯，請稍後再試';
+            } finally {
+                loadingDiv.style.display = 'none';
+                generateBtn.disabled = false;
+            }
+        }
+
+        function parsePracticalResponse(response) {
+            const parts = response.split(/\n(?=題目：|資料一：|資料二：)/);
+            const question = parts.find(part => part.startsWith('題目：'))?.replace('題目：', '').trim() || '未生成';
+            const material1 = parts.find(part => part.startsWith('資料一：'))?.replace('資料一：', '').trim() || '未生成';
+            const material2 = parts.find(part => part.startsWith('資料二：'))?.replace('資料二：', '').trim() || '未生成';
+            return { question, material1, material2 };
+        }
+
+        function displayPracticalQuestions(parsed) {
+            outputDiv.innerHTML = `
+                <div class="outputSection">
+                    <h3>題目</h3>
+                    <p>${parsed.question}</p>
+                </div>
+                <div class="outputSection">
+                    <h3>資料一</h3>
+                    <p>${parsed.material1}</p>
+                </div>
+                <div class="outputSection">
+                    <h3>資料二</h3>
+                    <p>${parsed.material2}</p>
+                </div>
+            `;
+        }
+
+        async function generateReadingQuestions() {
+            const targetPassage = document.getElementById('targetPassage').value.trim();
+            const refQAElements = document.querySelectorAll('.refQuestionAnswer');
+            const refQAs = Array.from(refQAElements).map(el => el.value.trim()).filter(val => val);
+
+            if (!targetPassage || refQAs.length === 0) {
+                alert('請輸入擬題篇章和至少一個參考題目與答案');
+                return;
+            }
+
+            loadingDiv.style.display = 'block';
+            generateBtn.disabled = true;
+            outputDiv.innerHTML = '';
+
+            const requestBody = {
+                model: MODEL,
+                messages: [
+                    { role: "system", content: "你是一個閱讀卷題目生成器。" },
+                    { role: "user", content: `請根據以下參考題目與答案，為擬題篇章生成相應的題目和答案：
+
+參考題目與答案：
+${refQAs.map((qa, index) => `題目${index + 1}與答案：${qa}`).join('\n')}
+
+擬題篇章：
+${targetPassage}
+
+請為擬題篇章生成與參考題目數量相同的題目和答案。第一組生成的題目與答案應對應第一組參考題目與答案的形式和風格，第二組生成的題目與答案應對應第二組參考題目與答案的形式和風格，依此類推。生成的題目和答案應與對應的參考題目和答案在形式和風格上相似，但內容和題材必須不同。生成的題目不得包含答案內容，答案不得與其他題目混淆。請確保生成的內容不為空白。若無法生成有效內容，則返回「未生成」。
+
+請以以下格式輸出生成的題目和答案，且嚴格遵循此格式：
+題目1：[生成的題目1]
+答案1：[生成的答案1]
+題目2：[生成的題目2]
+答案2：[生成的答案2]
+...` }
+                ]
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API請求失敗，狀態碼：${response.status}`);
+                }
+
+                const data = await response.json();
+                const generatedContent = data.choices[0].message.content;
+                const parsed = parseReadingResponse(generatedContent, refQAs.length);
+                displayReadingQuestions(parsed);
+            } catch (error) {
+                console.error('錯誤：', error);
+                outputDiv.textContent = '生成題目時出錯，請稍後再試';
+            } finally {
+                loadingDiv.style.display = 'none';
+                generateBtn.disabled = false;
+            }
+        }
+
+        function parseReadingResponse(response, count) {
+            const parts = response.split(/\n(?=題目\d+：|答案\d+：)/);
+            const parsed = [];
+            for (let i = 1; i <= count; i++) {
+                const question = parts.find(part => part.startsWith(`題目${i}：`))?.replace(`題目${i}：`, '').trim() || '生成失敗，請檢查輸入內容並重試';
+                const answer = parts.find(part => part.startsWith(`答案${i}：`))?.replace(`答案${i}：`, '').trim() || '生成失敗，請檢查輸入內容並重試';
+                parsed.push({ question, answer });
+            }
+            return parsed;
+        }
+
+        function displayReadingQuestions(parsed) {
+            outputDiv.innerHTML = parsed.map((item, index) => `
+                <div class="outputGroup">
+                    <span class="sequence">${index + 1}.</span>
+                    <div class="outputSection" style="flex: 1; margin-right: 10px;">
+                        <h3>題目</h3>
+                        <p>${item.question}</p>
+                    </div>
+                    <div class="outputSection" style="flex: 1;">
+                        <h3>答案</h3>
+                        <p>${item.answer}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+
+<footer class="copyright-footer">
+        <p>Copyright © 2025 陳冠健. All rights reserved.</p>
+    </footer>
+
+        
+</body>
+</html>
