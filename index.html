@@ -1,43 +1,4 @@
-<script type="text/javascript">
-        var gk_isXlsx = false;
-        var gk_xlsxFileLookup = {};
-        var gk_fileData = {};
-        function filledCell(cell) {
-          return cell !== '' && cell != null;
-        }
-        function loadFileData(filename) {
-        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
-            try {
-                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                var firstSheetName = workbook.SheetNames[0];
-                var worksheet = workbook.Sheets[firstSheetName];
-
-                // Convert sheet to JSON to filter blank rows
-                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                // Filter out blank rows (rows where all cells are empty, null, or undefined)
-                var filteredData = jsonData.filter(row => row.some(filledCell));
-
-                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
-                var headerRowIndex = filteredData.findIndex((row, index) =>
-                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
-                );
-                // Fallback
-                if (headerRowIndex === -1 || headerRowIndex > 25) {
-                  headerRowIndex = 0;
-                }
-
-                // Convert filtered JSON back to CSV
-                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
-                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
-                return csv;
-            } catch (e) {
-                console.error(e);
-                return "";
-            }
-        }
-        return gk_fileData[filename] || "";
-        }
-        </script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
@@ -56,7 +17,7 @@
             min-height: 100vh;
         }
 
- .copyright-footer {
+        .copyright-footer {
             position: fixed;
             bottom: 0;
             right: 0;
@@ -75,8 +36,6 @@
             }
         }
 
-
-            
         .container {
             background: white;
             padding: 20px;
@@ -422,35 +381,46 @@
             return cell !== '' && cell != null;
         }
 
-        async function loadFileData(filename) {
+        function loadFileData(filename) {
             if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
                 try {
-                    const workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
-                    const sheetNames = workbook.SheetNames;
+                    var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                    var firstSheetName = workbook.SheetNames[0];
+                    var worksheet = workbook.Sheets[firstSheetName];
 
-                    const processSheet = async (sheetName) => {
-                        const worksheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
-                        const filteredData = jsonData.filter(row => row.some(filledCell));
+                    // Convert sheet to JSON to filter blank rows
+                    var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                    // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                    var filteredData = jsonData.filter(row => row.some(filledCell));
 
-                        const headerRowIndex = filteredData.findIndex((row, index) =>
-                            row.filter(filledCell).length >= (filteredData[index + 1]?.filter(filledCell).length || 0)
-                        ) || 0;
+                    // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                    var headerRowIndex = filteredData.findIndex((row, index) =>
+                      row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                    );
+                    // Fallback
+                    if (headerRowIndex === -1 || headerRowIndex > 25) {
+                      headerRowIndex = 0;
+                    }
 
-                        const csv = XLSX.utils.sheet_to_csv(XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)));
-                        return csv;
-                    };
-
-                    const csvPromises = sheetNames.map(sheetName => processSheet(sheetName));
-                    const csvResults = await Promise.all(csvPromises);
-
-                    return csvResults.length > 0 ? csvResults[0] : "";
+                    // Convert filtered JSON back to CSV
+                    var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                    csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                    return csv;
                 } catch (e) {
-                    console.error('Error processing file:', e);
+                    console.error(e);
                     return "";
                 }
             }
             return gk_fileData[filename] || "";
+        }
+
+        // 過濾思考過程標籤的函數
+        function removeThinkingTags(content) {
+            if (typeof content !== 'string') {
+                return content;
+            }
+            // 移除<think></think>標籤及其內容
+            return content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
         }
 
         const API_URL = "https://chatapi.akash.network/api/v1/chat/completions";
@@ -492,14 +462,14 @@
         });
 
         function addReferenceQA() {
-    const list = document.getElementById('referenceQAList');
-    const currentCount = list.querySelectorAll('.referenceQA').length;
-    const newQA = document.createElement('div');
-    newQA.className = 'referenceQA';
-    newQA.innerHTML = `<span class="sequence">${currentCount + 1}.</span><textarea class="refQuestionAnswer" placeholder="在此輸入參考題目與答案"></textarea>`;
-    list.appendChild(newQA);
-    updateControlButtons();
-}
+            const list = document.getElementById('referenceQAList');
+            const currentCount = list.querySelectorAll('.referenceQA').length;
+            const newQA = document.createElement('div');
+            newQA.className = 'referenceQA';
+            newQA.innerHTML = `<span class="sequence">${currentCount + 1}.</span><textarea class="refQuestionAnswer" placeholder="在此輸入參考題目與答案"></textarea>`;
+            list.appendChild(newQA);
+            updateControlButtons();
+        }
 
         function removeReferenceQA() {
             const list = document.getElementById('referenceQAList');
@@ -517,14 +487,14 @@
             });
         }
 
-       function updateControlButtons() {
-    const list = document.getElementById('referenceQAList');
-    const currentCount = list.querySelectorAll('.referenceQA').length;
-    const addBtn = document.querySelector('.addReferenceBtn');
-    const removeBtn = document.querySelector('.removeReferenceBtn');
-    addBtn.disabled = false; // 始終啟用添加按鈕
-    removeBtn.disabled = currentCount <= 1;
-}
+        function updateControlButtons() {
+            const list = document.getElementById('referenceQAList');
+            const currentCount = list.querySelectorAll('.referenceQA').length;
+            const addBtn = document.querySelector('.addReferenceBtn');
+            const removeBtn = document.querySelector('.removeReferenceBtn');
+            addBtn.disabled = false; // 始終啟用添加按鈕
+            removeBtn.disabled = currentCount <= 1;
+        }
 
         // 初始化按鈕狀態
         updateControlButtons();
@@ -545,8 +515,8 @@
                 messages: [
                     { role: "system", content: "你是一個作文題目生成器。" },
                     { role: "user", content: `試根據以上作文題目形式，幫我出題目。必須用繁體中文回應。絕對不要文學性，絕對不要運用文筆及太深奧的詞匯擬題(動詞和名詞的搭配運用不宜搞新意和雕琢，例如「凝結在指縫」的「凝結」和「指縫」、「停駐在窗前」的「停駐」和「窗」，這些都不是常規的配搭，會令題目用語看起來很生澀,請在擬題中斂起你的文筆和才華，題目中不同詞匯的配搭必須平實，不能新鮮)，違反則無效。不要提供太多細節，不要具體描述題目的事件，要足夠空泛才有發揮空間，不要將題目範圍鎖得太小（例如「墜落在深淵的星屑」，太局限了），不要擬訂以描寫為主的題目。擬題時盡量少用以短語構成的定語，必須在形式、句式、用語和字數上參考用家提供的題目（開關引號的內容除外)，違反則無效，但生成題目的內容及題材絕對不可與原本的題目相似（例如參考題目為「沉默」，生成題目則用「留白」或「無聲」等近義詞，這些例子都屬於相似），違反則無效。假如參考題目有逗引，然後再點明題目，便絕對不能只生成題目，假如參考題目沒有逗引，那就必須生成沒有逗引的題目，一切視乎參考題目的形式和字數如何，請模仿參考題目的形式和字數，違反則無效，其生成題目形式及參考題目形式必與參考題目一致。除了生成題目之外，不要顯示任何其他不相關的內容，違反則無效：\n${mimicQuestion}\n請生成${quantity}個新題目。` }
-               ],
-        max_tokens: 64000  // 添加這一行以設置最大 token 數量
+                ],
+                max_tokens: 64000
             };
 
             try {
@@ -564,7 +534,9 @@
                 }
 
                 const data = await response.json();
-                const generatedQuestions = data.choices[0].message.content;
+                let generatedQuestions = data.choices[0].message.content;
+                // 移除思考過程標籤
+                generatedQuestions = removeThinkingTags(generatedQuestions);
                 displayEssayQuestions(generatedQuestions);
             } catch (error) {
                 console.error('錯誤：', error);
@@ -632,7 +604,7 @@ ${topicInstruction}請生成一個新的題目和兩個資料，模仿參考內�
 資料一：[生成的資料一]
 資料二：[生成的資料二]` }
                 ],
-                    max_tokens: 8192  // 添加這一行
+                max_tokens: 8192
             };
 
             try {
@@ -650,7 +622,9 @@ ${topicInstruction}請生成一個新的題目和兩個資料，模仿參考內�
                 }
 
                 const data = await response.json();
-                const generatedContent = data.choices[0].message.content;
+                let generatedContent = data.choices[0].message.content;
+                // 移除思考過程標籤
+                generatedContent = removeThinkingTags(generatedContent);
                 const parsed = parsePracticalResponse(generatedContent);
                 if (parsed.question === '未生成' || parsed.material1 === '未生成' || parsed.material2 === '未生成') {
                     outputDiv.textContent = '生成內容失敗，請重試';
@@ -667,10 +641,43 @@ ${topicInstruction}請生成一個新的題目和兩個資料，模仿參考內�
         }
 
         function parsePracticalResponse(response) {
-            const parts = response.split(/\n(?=題目：|資料一：|資料二：)/);
-            const question = parts.find(part => part.startsWith('題目：'))?.replace('題目：', '').trim() || '未生成';
-            const material1 = parts.find(part => part.startsWith('資料一：'))?.replace('資料一：', '').trim() || '未生成';
-            const material2 = parts.find(part => part.startsWith('資料二：'))?.replace('資料二：', '').trim() || '未生成';
+            // 先移除可能的思考過程標籤
+            const cleanResponse = removeThinkingTags(response);
+            
+            // 使用更精確的分割方式
+            const lines = cleanResponse.split('\n').filter(line => line.trim() !== '');
+            
+            let question = '未生成';
+            let material1 = '未生成';
+            let material2 = '未生成';
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('題目：')) {
+                    question = line.replace('題目：', '').trim();
+                } else if (line.startsWith('資料一：')) {
+                    // 收集資料一的內容，可能跨多行
+                    let content = line.replace('資料一：', '').trim();
+                    let j = i + 1;
+                    while (j < lines.length && !lines[j].startsWith('資料二：') && !lines[j].startsWith('題目：')) {
+                        content += '\n' + lines[j].trim();
+                        j++;
+                    }
+                    material1 = content.trim();
+                    i = j - 1; // 調整循環索引
+                } else if (line.startsWith('資料二：')) {
+                    // 收集資料二的內容，可能跨多行
+                    let content = line.replace('資料二：', '').trim();
+                    let j = i + 1;
+                    while (j < lines.length && !lines[j].startsWith('題目：') && !lines[j].startsWith('資料一：')) {
+                        content += '\n' + lines[j].trim();
+                        j++;
+                    }
+                    material2 = content.trim();
+                    i = j - 1; // 調整循環索引
+                }
+            }
+            
             return { question, material1, material2 };
         }
 
@@ -718,6 +725,7 @@ ${refQAs.map((qa, index) => `題目${index + 1}與答案：${qa}`).join('\n')}
 ${targetPassage}
 
 請為擬題篇章生成與參考題目數量相同的題目和答案。第一組生成的題目與答案應對應第一組參考題目與答案的形式和風格，第二組生成的題目與答案應對應第二組參考題目與答案的形式和風格，依此類推。生成的題目和答案應與對應的參考題目和答案在形式和風格上相似，但內容和題材必須不同。生成的題目不得包含答案內容，答案不得與其他題目混淆。由於是應試文章題目及答案，因此要避免過份具理論哲學性的字眼，必須減少概念模糊的術語，例如「情感載體」、「能動性」、「因果鏈條」、「辯證關係」、「時空的共創」，請用日常化用語。請確保生成的內容不為空白。若無法生成有效內容，則返回「未生成」。
+
 請以以下格式輸出生成的題目和答案，且嚴格遵循此格式：
 題目1：[生成的題目1]
 答案1：[生成的答案1]
@@ -725,8 +733,7 @@ ${targetPassage}
 答案2：[生成的答案2]
 ...` }
                 ],
-        max_tokens: 8192  // 添加這一行
-                    
+                max_tokens: 8192
             };
 
             try {
@@ -744,7 +751,9 @@ ${targetPassage}
                 }
 
                 const data = await response.json();
-                const generatedContent = data.choices[0].message.content;
+                let generatedContent = data.choices[0].message.content;
+                // 移除思考過程標籤
+                generatedContent = removeThinkingTags(generatedContent);
                 const parsed = parseReadingResponse(generatedContent, refQAs.length);
                 displayReadingQuestions(parsed);
             } catch (error) {
@@ -757,13 +766,70 @@ ${targetPassage}
         }
 
         function parseReadingResponse(response, count) {
-            const parts = response.split(/\n(?=題目\d+：|答案\d+：)/);
+            // 先移除可能的思考過程標籤
+            const cleanResponse = removeThinkingTags(response);
+            
+            // 將回應按行分割，並過濾空行
+            const lines = cleanResponse.split('\n').filter(line => line.trim() !== '');
+            
             const parsed = [];
+            
             for (let i = 1; i <= count; i++) {
-                const question = parts.find(part => part.startsWith(`題目${i}：`))?.replace(`題目${i}：`, '').trim() || '生成失敗，請檢查輸入內容並重試';
-                const answer = parts.find(part => part.startsWith(`答案${i}：`))?.replace(`答案${i}：`, '').trim() || '生成失敗，請檢查輸入內容並重試';
+                let question = '生成失敗，請檢查輸入內容並重試';
+                let answer = '生成失敗，請檢查輸入內容並重試';
+                
+                // 尋找對應的題目和答案
+                for (let j = 0; j < lines.length; j++) {
+                    const line = lines[j].trim();
+                    
+                    // 尋找題目
+                    if (line.startsWith(`題目${i}：`)) {
+                        question = line.replace(`題目${i}：`, '').trim();
+                        // 如果題目內容為空，嘗試從下一行讀取
+                        if (!question && j + 1 < lines.length) {
+                            const nextLine = lines[j + 1].trim();
+                            if (!nextLine.startsWith('答案') && !nextLine.startsWith('題目')) {
+                                question = nextLine;
+                            }
+                        }
+                    }
+                    
+                    // 尋找答案
+                    if (line.startsWith(`答案${i}：`)) {
+                        answer = line.replace(`答案${i}：`, '').trim();
+                        // 如果答案內容為空或很短，嘗試收集多行內容
+                        if ((!answer || answer.length < 10) && j + 1 < lines.length) {
+                            let answerContent = answer;
+                            let k = j + 1;
+                            while (k < lines.length) {
+                                const nextLine = lines[k].trim();
+                                // 如果遇到下一個題目或答案標籤，停止收集
+                                if (nextLine.startsWith('題目') || nextLine.startsWith('答案')) {
+                                    break;
+                                }
+                                if (nextLine) {
+                                    answerContent += (answerContent ? '\n' : '') + nextLine;
+                                }
+                                k++;
+                            }
+                            if (answerContent) {
+                                answer = answerContent.trim();
+                            }
+                        }
+                    }
+                }
+                
+                // 確保題目和答案不為空且不相同
+                if (!question || question === answer) {
+                    question = `題目${i}生成失敗，請檢查輸入內容並重試`;
+                }
+                if (!answer || answer === question) {
+                    answer = `答案${i}生成失敗，請檢查輸入內容並重試`;
+                }
+                
                 parsed.push({ question, answer });
             }
+            
             return parsed;
         }
 
@@ -784,10 +850,9 @@ ${targetPassage}
         }
     </script>
 
-<footer class="copyright-footer">
+    <footer class="copyright-footer">
         <p>Copyright © 2025 陳冠健. All rights reserved.</p>
     </footer>
 
-        
 </body>
 </html>
